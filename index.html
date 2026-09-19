@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 完整版 - 带分数与历史记录</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background-color: #faf8ef;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 { font-size: 60px; color: #776e65; margin: 0; }
+
+        /* 分数板样式 */
+        .score-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .score-box {
+            background: #bbada0;
+            padding: 10px 20px;
+            border-radius: 6px;
+            color: white;
+            text-align: center;
+            min-width: 80px;
+        }
+        .score-label { font-size: 14px; color: #eee4da; }
+        .score-value { font-size: 24px; font-weight: bold; }
+
+        /* 重新开始按钮 */
+        .restart-btn {
+            background-color: #8f7a66;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .restart-btn:hover { background-color: #7f6a56; }
+
+        /* 游戏棋盘 */
+        .grid {
+            width: 400px;
+            height: 400px;
+            background-color: #bbada0;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            position: relative; /* 为了定位 Game Over 遮罩 */
+        }
+
+        .cell {
+            background-color: #cdc1b4;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            font-weight: bold;
+            color: #776e65;
+        }
+
+        /* 不同数字的颜色 */
+        .tile-2 { background: #eee4da; }
+        .tile-4 { background: #ede0c8; }
+        .tile-8 { background: #f2b179; color: white; }
+        .tile-16 { background: #f59563; color: white; }
+        .tile-32 { background: #f67c5f; color: white; }
+        .tile-64 { background: #f65e3b; color: white; }
+        .tile-128 { background: #edcf72; color: white; font-size: 30px; }
+        .tile-256 { background: #edcc61; color: white; font-size: 30px; }
+        .tile-512 { background: #edc850; color: white; font-size: 30px; }
+        .tile-1024 { background: #edc53f; color: white; font-size: 24px; }
+        .tile-2048 { background: #edc22e; color: white; font-size: 24px; }
+
+        /* Game Over 遮罩层 */
+        #game-over-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(238, 228, 218, 0.73);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 10px;
+            display: none; /* 默认隐藏 */
+        }
+        #game-over-text {
+            font-size: 40px;
+            font-weight: bold;
+            color: #776e65;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>2048</h1>
+
+    <div class="score-container">
+        <div class="score-box">
+            <div class="score-label">分数</div>
+            <div id="score" class="score-value">0</div>
+        </div>
+        <div class="score-box">
+            <div class="score-label">最高分</div>
+            <div id="best-score" class="score-value">0</div>
+        </div>
+    </div>
+
+    <button class="restart-btn" onclick="initGame()">新游戏</button>
+
+    <div class="grid" id="grid">
+        <!-- 游戏结束遮罩 -->
+        <div id="game-over-overlay">
+            <div id="game-over-text">游戏结束!</div>
+            <button class="restart-btn" onclick="initGame()">再来一局</button>
+        </div>
+    </div>
+
+    <script>
+        const gridDisplay = document.getElementById('grid');
+        const scoreDisplay = document.getElementById('score');
+        const bestScoreDisplay = document.getElementById('best-score');
+        const gameOverOverlay = document.getElementById('game-over-overlay');
+        
+        let matrix = [];
+        let score = 0;
+        let bestScore = localStorage.getItem('2048_bestScore') || 0; // 读取本地存储的最高分
+        
+        bestScoreDisplay.innerText = bestScore;
+
+        // 初始化游戏
+        function initGame() {
+            // 重置数据
+            matrix = [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+            score = 0;
+            updateScore();
+            gameOverOverlay.style.display = 'none'; // 隐藏结束画面
+            
+            // 生成两个初始数字
+            spawnNewNumber();
+            spawnNewNumber();
+            drawBoard();
+        }
+
+        // 在随机空位生成一个数字 (2 或 4)
+        function spawnNewNumber() {
+            let emptyCells = [];
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    if (matrix[r][c] === 0) emptyCells.push({r, c});
+                }
+            }
+            if (emptyCells.length > 0) {
+                let randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                matrix[randomCell.r][randomCell.c] = Math.random() > 0.9 ? 4 : 2;
+            }
+        }
+
+        // 绘制棋盘
+        function drawBoard() {
+            // 清除除了 overlay 以外的所有格子
+            const cells = Array.from(gridDisplay.children).filter(el => el.id !== 'game-over-overlay');
+            cells.forEach(cell => cell.remove());
+
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    const value = matrix[r][c];
+                    if (value > 0) {
+                        cell.innerText = value;
+                        cell.classList.add(`tile-${value}`);
+                    }
+                    // 将格子插入到 overlay 之前，保证遮罩层永远在最上面
+                    gridDisplay.insertBefore(cell, gameOverOverlay);
+                }
+            }
+        }
+
+        // 更新分数显示
+        function updateScore() {
+            scoreDisplay.innerText = score;
+            if (score > bestScore) {
+                bestScore = score;
+                bestScoreDisplay.innerText = bestScore;
+                localStorage.setItem('2048_bestScore', bestScore); // 保存到浏览器
+            }
+        }
+
+        // --- 核心移动算法 ---
+
+        function moveLeft() {
+            let moved = false;
+            for (let r = 0; r < 4; r++) {
+                let row = matrix[r].filter(val => val !== 0); 
+                for (let c = 0; c < row.length - 1; c++) {
+                    if (row[c] === row[c + 1]) {
+                        row[c] *= 2;
+                        score += row[c]; // 加分！
+                        row[c + 1] = 0; 
+                    }
+                }
+                row = row.filter(val => val !== 0); 
+                while (row.length < 4) row.push(0);
+                
+                if (row.join(',') !== matrix[r].join(',')) moved = true;
+                matrix[r] = row;
+            }
+            return moved;
+        }
+
+        function moveRight() {
+            let moved = false;
+            for (let r = 0; r < 4; r++) {
+                let row = matrix[r].slice().reverse(); // 翻转
+                for (let c = 0; c < row.length - 1; c++) {
+                    if (row[c] === row[c + 1]) {
+                        row[c] *= 2;
+                        score += row[c];
+                        row[c + 1] = 0;
+                    }
+                }
+                row = row.filter(val => val !== 0);
+                while (row.length < 4) row.push(0);
+                row.reverse(); // 翻转回来
+                
+                if (row.join(',') !== matrix[r].join(',')) moved = true;
+                matrix[r] = row;
+            }
+            return moved;
+        }
+
+        function moveUp() {
+            let moved = false;
+            for (let c = 0; c < 4; c++) {
+                let col = [matrix[0][c], matrix[1][c], matrix[2][c], matrix[3][c]];
+                col = col.filter(val => val !== 0);
+                for (let r = 0; r < col.length - 1; r++) {
+                    if (col[r] === col[r + 1]) {
+                        col[r] *= 2;
+                        score += col[r];
+                        col[r + 1] = 0;
+                    }
+                }
+                col = col.filter(val => val !== 0);
+                while (col.length < 4) col.push(0);
+                
+                for (let r = 0; r < 4; r++) {
+                    if (matrix[r][c] !== col[r]) moved = true;
+                    matrix[r][c] = col[r];
+                }
+            }
+            return moved;
+        }
+
+        function moveDown() {
+            let moved = false;
+            for (let c = 0; c < 4; c++) {
+                let col = [matrix[0][c], matrix[1][c], matrix[2][c], matrix[3][c]].reverse();
+                col = col.filter(val => val !== 0);
+                for (let r = 0; r < col.length - 1; r++) {
+                    if (col[r] === col[r + 1]) {
+                        col[r] *= 2;
+                        score += col[r];
+                        col[r + 1] = 0;
+                    }
+                }
+                col = col.filter(val => val !== 0);
+                while (col.length < 4) col.push(0);
+                col.reverse();
+                
+                for (let r = 0; r < 4; r++) {
+                    if (matrix[r][c] !== col[r]) moved = true;
+                    matrix[r][c] = col[r];
+                }
+            }
+            return moved;
+        }
+
+        // 检查游戏是否结束
+        function checkGameOver() {
+            // 1. 还有空位，没结束
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    if (matrix[r][c] === 0) return;
+                }
+            }
+            
+            // 2. 没空位了，检查上下左右有没有相同的数字可以合并
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    let current = matrix[r][c];
+                    // 检查右边
+                    if (c < 3 && current === matrix[r][c+1]) return;
+                    // 检查下边
+                    if (r < 3 && current === matrix[r+1][c]) return;
+                }
+            }
+
+            // 如果代码走到这里，说明既没空位也没法合并 -> 游戏结束
+            gameOverOverlay.style.display = 'flex';
+        }
+
+        // 键盘监听
+        document.addEventListener('keydown', (e) => {
+            if (gameOverOverlay.style.display === 'flex') return; // 游戏结束了就不让动
+
+            let moved = false;
+            switch(e.key) {
+                case 'ArrowLeft': moved = moveLeft(); break;
+                case 'ArrowRight': moved = moveRight(); break;
+                case 'ArrowUp': moved = moveUp(); break;
+                case 'ArrowDown': moved = moveDown(); break;
+            }
+
+            if (moved) {
+                spawnNewNumber();
+                drawBoard();
+                updateScore();
+                checkGameOver(); // 每次移动后检查是否挂了
+            }
+        });
+
+        // 启动！
+        initGame();
+    </script>
+</body>
+</html>
