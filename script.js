@@ -38,6 +38,23 @@ function clearSave() {
     localStorage.removeItem(SAVE_KEY);
 }
 
+
+// --- 新增：手动保存 ---
+function manualSave() {
+    saveGame(); // 调用之前的保存逻辑
+    alert('进度已保存！下次点击"读取上次存档"即可恢复。');
+}
+
+// --- 新增：手动新游戏 ---
+function startNewGameManual() {
+    if (confirm('确定要开始新游戏吗？当前未保存的进度将丢失。')) {
+        clearSave(); // 清除旧存档
+        initGame();  // 重新开始
+    }
+}
+
+
+
 // --- 新增代码结束 ---
 // 核心逻辑
 let matrix = [];
@@ -48,6 +65,13 @@ const gameOverDiv = document.getElementById('game-over');
 
 // 初始化游戏
 function initGame() {
+        // --- 新增：检测是否有存档，决定是否显示“读取”按钮 ---
+    if (localStorage.getItem('my_2048_save_v1')) {
+        document.getElementById('load-container').style.display = 'block';
+    } else {
+        document.getElementById('load-container').style.display = 'none';
+    }
+    // ----------------------------------------------------
     matrix = Array(4).fill().map(() => Array(4).fill(0));
     score = 0;
     scoreDisplay.innerText = 0;
@@ -245,7 +269,5 @@ document.addEventListener('touchend', e => {
     saveGame(); // <--- 加上这一行
 }, { passive: false });
 
-// 尝试读取存档，如果没读到（返回false），才开始新游戏
-if (!loadGame()) {
-    initGame();
-}
+// 新的代码：直接开始新游戏
+initGame(); 
