@@ -342,6 +342,62 @@
                 checkGameOver(); // 每次移动后检查是否挂了
             }
         });
+                // --- 新增：手机触摸滑动支持 ---
+        
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const minSwipeDistance = 30; // 最小滑动距离，防止误触
+
+        // 1. 手指按下时，记录起点
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: false }); // passive: false 允许我们阻止默认滚动
+
+        // 2. 手指松开时，计算方向
+        document.addEventListener('touchend', function(e) {
+            // 如果游戏结束了，就不响应滑动
+            if (gameOverOverlay.style.display === 'flex') return;
+
+            let touchEndX = e.changedTouches[0].clientX;
+            let touchEndY = e.changedTouches[0].clientY;
+
+            let diffX = touchEndX - touchStartX; // X轴差值
+            let diffY = touchEndY - touchStartY; // Y轴差值
+
+            // 判断是水平滑动还是垂直滑动
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                // 水平滑动
+                if (Math.abs(diffX) > minSwipeDistance) {
+                    if (diffX > 0) handleMove('ArrowRight'); // 向右
+                    else handleMove('ArrowLeft');             // 向左
+                }
+            } else {
+                // 垂直滑动
+                if (Math.abs(diffY) > minSwipeDistance) {
+                    if (diffY > 0) handleMove('ArrowDown');   // 向下
+                    else handleMove('ArrowUp');               // 向上
+                }
+            }
+        }, { passive: false });
+
+        // 3. 封装一个通用的移动处理函数 (避免代码重复)
+        function handleMove(key) {
+            let moved = false;
+            switch(key) {
+                case 'ArrowLeft': moved = moveLeft(); break;
+                case 'ArrowRight': moved = moveRight(); break;
+                case 'ArrowUp': moved = moveUp(); break;
+                case 'ArrowDown': moved = moveDown(); break;
+            }
+
+            if (moved) {
+                spawnNewNumber();
+                drawBoard();
+                updateScore();
+                checkGameOver();
+            }
+        }
 
         // 启动！
         initGame();
