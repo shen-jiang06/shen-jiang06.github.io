@@ -61,6 +61,8 @@
             padding: 10px;
             box-sizing: border-box;
             position: relative; /* 为了定位 Game Over 遮罩 */
+            /* 这是防止手机右滑退出的关键 */
+            touch-action: none;
         }
 
         .cell {
