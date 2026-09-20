@@ -1,3 +1,61 @@
+// --- 新增代码开始 ---
+
+// 定义存档的钥匙名字
+const SAVE_KEY = 'my_2048_save_v1';
+
+// 保存进度的函数
+function saveGame() {
+    const data = {
+        matrix: matrix,
+        score: score
+    };
+    // 把数据转成字符串存进去
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+}
+
+// 读取进度的函数
+function loadGame() {
+    const savedData = localStorage.getItem(SAVE_KEY);
+    if (savedData) {
+        try {
+            const data = JSON.parse(savedData);
+            matrix = data.matrix;
+            score = data.score;
+            // 恢复界面显示
+            scoreDisplay.innerText = score;
+            gameOverDiv.classList.add('hidden'); // 确保游戏结束界面隐藏
+            draw(); // 重新画一遍棋盘
+            return true; // 告诉外面：读到了存档！
+        } catch (e) {
+            console.log("存档损坏，开始新游戏");
+        }
+    }
+    return false; // 没读到存档
+}
+
+// 清除存档的函数（用于重新开始）
+function clearSave() {
+    localStorage.removeItem(SAVE_KEY);
+}
+
+
+// --- 新增：手动保存 ---
+function manualSave() {
+    saveGame(); // 调用之前的保存逻辑
+    alert('进度已保存！下次点击"读取上次存档"即可恢复。');
+}
+
+// --- 新增：手动新游戏 ---
+function startNewGameManual() {
+    if (confirm('确定要开始新游戏吗？当前未保存的进度将丢失。')) {
+        clearSave(); // 清除旧存档
+        initGame();  // 重新开始
+    }
+}
+
+
+
+// --- 新增代码结束 ---
 // 核心逻辑
 let matrix = [];
 let score = 0;
@@ -7,6 +65,13 @@ const gameOverDiv = document.getElementById('game-over');
 
 // 初始化游戏
 function initGame() {
+        // --- 新增：检测是否有存档，决定是否显示“读取”按钮 ---
+    if (localStorage.getItem('my_2048_save_v1')) {
+        document.getElementById('load-container').style.display = 'block';
+    } else {
+        document.getElementById('load-container').style.display = 'none';
+    }
+    // ----------------------------------------------------
     matrix = Array(4).fill().map(() => Array(4).fill(0));
     score = 0;
     scoreDisplay.innerText = 0;
@@ -171,7 +236,12 @@ document.addEventListener('keydown', e => {
     if(e.key === 'ArrowUp') moved = moveUp();
     if(e.key === 'ArrowDown') moved = moveDown();
     
-    if(moved) { spawn(); draw(); checkGameOver(); }
+  if(moved) { 
+    spawn(); 
+    draw(); 
+    checkGameOver(); 
+    saveGame(); // <--- 加上这一行（注意分号）
+}
 });
 
 // 手机触摸滑动监听
@@ -195,8 +265,9 @@ document.addEventListener('touchend', e => {
             if(diffY > 0) moveDown(); else moveUp();
         }
     }
-    spawn(); draw(); checkGameOver();
+        spawn(); draw(); checkGameOver();
+    saveGame(); // <--- 加上这一行
 }, { passive: false });
 
-// 启动游戏
-initGame();
+// 新的代码：直接开始新游戏
+initGame(); 
