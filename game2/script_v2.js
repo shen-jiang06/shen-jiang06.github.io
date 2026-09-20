@@ -65,32 +65,45 @@ const gameOverDiv = document.getElementById('game-over');
 
 // 初始化游戏
 function initGame() {
-    alert("新代码已加载！正在尝试读档...");
-        // --- 新增：检测是否有存档，决定是否显示“读取”按钮 ---
-    if (localStorage.getItem('my_2048_save_v1')) {
-        document.getElementById('load-container').style.display = 'block';
-    } else {
-        document.getElementById('load-container').style.display = 'none';
+    // 1. 先尝试自动读取存档
+    let loaded = false;
+    const savedData = localStorage.getItem('my_2048_save_v1');
+    if (savedData) {
+        try {
+            const data = JSON.parse(savedData);
+            matrix = data.matrix;
+            score = data.score;
+            loaded = true; // 标记：成功读档了！
+        } catch (e) {
+            console.log("存档损坏");
+        }
     }
-    // ----------------------------------------------------
-    matrix = Array(4).fill().map(() => Array(4).fill(0));
-    score = 0;
-    scoreDisplay.innerText = 0;
+
+    // 2. 如果没读到存档，才真正开始新游戏
+    if (!loaded) {
+        matrix = Array(4).fill().map(() => Array(4).fill(0));
+        score = 0;
+    }
+
+    // 3. 更新界面
+    scoreDisplay.innerText = score;
     gameOverDiv.classList.add('hidden');
     
-    // 清空格子（保留遮罩层）
+    // 清空格子并重新生成
     const cells = document.querySelectorAll('.cell');
     cells.forEach(c => c.remove());
-    
-    // 生成16个格子
     for(let i = 0; i < 16; i++) {
         let cell = document.createElement('div');
         cell.className = 'cell';
         gridDisplay.insertBefore(cell, gameOverDiv);
     }
     
-    spawn(); spawn();
-    draw();
+    // 如果是新游戏，才生成两个初始数字；如果是读档，就不生成了
+    if (!loaded) {
+        spawn(); spawn();
+    }
+    
+    draw(); // 重新画一遍棋盘
 }
 
 // 生成新数字 (90% 生成 2，10% 生成 4)
