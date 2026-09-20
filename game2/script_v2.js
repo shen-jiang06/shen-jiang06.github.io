@@ -65,6 +65,7 @@ const gameOverDiv = document.getElementById('game-over');
 
 // 初始化游戏
 function initGame() {
+    alert("新代码已加载！正在尝试读档...");
         // --- 新增：检测是否有存档，决定是否显示“读取”按钮 ---
     if (localStorage.getItem('my_2048_save_v1')) {
         document.getElementById('load-container').style.display = 'block';
